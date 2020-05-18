@@ -1,0 +1,930 @@
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE DS1302
+OBJECT MODULE PLACED IN .\Objects\ds1302.obj
+COMPILER INVOKED BY: D:\keil_c51\C51\BIN\C51.EXE ..\driver\src\ds1302.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\app\inc;..\dr
+                    -iver\inc;..\user\inc) DEBUG OBJECTEXTEND PRINT(.\Listings\ds1302.lst) OBJECT(.\Objects\ds1302.obj)
+
+line level    source
+
+   1          #include<STC12C5A60S2.H> 
+   2          #include "typedef.h"
+   3          #include "intrins.h"
+   4          #include <math.h>
+   5          
+   6          
+   7          uint8_t a,miao,shi,fen,ri,yue,nian,week,temp,keynum,flag,alarmflag;
+   8          
+   9          
+  10          ////液晶端口定义
+  11          //#define lcd_date P0 
+  12          //#define delay5us(){_nop_();_nop_();_nop_();_nop_();_nop_();}
+  13          //#define h1 0x80 //LCD第一行的初始化位置
+  14          //#define h2 0x80+0x40 //LCD第二行初始化位置
+  15          
+  16          ////定义1602相关管脚
+  17          //sbit lcdrs=P0^0;
+  18          //sbit lcden=P0^2;
+  19          //sbit lcdrw=P0^1;
+  20          
+  21          ////温湿度传感器
+  22          //#define HTU21DADDR 0x80               //SHT21的IIC地址
+  23          //sbit SDA = P3^1;
+  24          //sbit SCL = P3^0;
+  25          
+  26          //#define ACK           0   //应答
+  27          //#define NACK  1       //非应答
+  28          
+  29          ////按键
+  30          //sbit key1=P1^0;//设置按键
+  31          //sbit key2=P1^1;//加一键
+  32          //sbit key3=P1^4;//减一键
+  33          //sbit key4=P1^5;//切换显示时间
+  34          //sbit key5=P1^6;//切换显示温湿度
+  35          
+  36          //sbit beep=P1^7;//蜂鸣器
+  37          //sbit key8=P3^5;//红外控制
+  38          
+  39          
+  40          ////DS1302芯片的管脚定义
+  41          //sbit RST=P3^4;
+  42          //sbit IO=P3^3;
+  43          //sbit SCLK=P3^2;
+  44          //sbit ACC0=ACC^0;//设置累加器
+  45          //sbit ACC7=ACC^7;
+  46          
+  47          //void delay(uint z)//延时函数
+  48          //{
+  49          //      uint x,y;
+  50          //      for(x=z;x>0;x--)
+  51          //      for(y=110;y>0;y--);
+  52          //}
+  53          
+  54          //void delayms(uchar x)
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 2   
+
+  55          //{
+  56          //      uchar t;
+  57          //      while(x--)
+  58          //    for(t=0;t<120;t++);
+  59          //}
+  60          
+  61          ////液晶屏忙等待
+  62          //void lcd_busy_wait()
+  63          //{
+  64          //uchar Hi,Lo;
+  65          //      do
+  66          //      {
+  67          //              lcd_date |=0xf0;//4位模式下的数据端口置高电平
+  68          //              lcdrs=0;
+  69          //              lcdrw=1;//选择指令寄存器 读
+  70          //              lcden=1;
+  71          //              delay5us();
+  72          //              Hi=lcd_date;
+  73          //              delay5us();
+  74          //              lcden=0;
+  75          //              delay5us();
+  76          //              lcden=1;
+  77          //              delay5us();
+  78          //              Lo=lcd_date;
+  79          //              delay5us();
+  80          //              lcden=0;
+  81          //              delay5us();
+  82          //      }
+  83          //      while(Hi&0x80);
+  84          //}
+  85          
+  86          ////写指令
+  87          //void lcd_1602_write_com(uchar com)   
+  88          //{
+  89          //      lcd_busy_wait();
+  90          //      lcd_date=com&0xf0|0x04;//写入高四位,或时已经将rs,rw,en的电平置位
+  91          //      delay5us();
+  92          //      lcden=0;
+  93          //      delay5us();
+  94          //      lcd_date=com<<4|0x04;//写入低四位
+  95          //      delay5us();
+  96          //      lcden=0;
+  97          //      delay5us();
+  98          //}     
+  99          // 
+ 100          ////写数据
+ 101          // void lcd_1602_write_dat(uchar dat)
+ 102          //{
+ 103          //      lcd_busy_wait();
+ 104          //      lcd_date=dat&0xf0|0x05;//写入高四位
+ 105          //      delay5us();
+ 106          //      lcden=0;
+ 107          //      delay5us();
+ 108          //      lcd_date=dat<<4|0x05;//写入低四位
+ 109          //      delay5us();
+ 110          //      lcden=0;
+ 111          //      delay5us();
+ 112          //}
+ 113          
+ 114          //void Lcd_1602_init()
+ 115          //{
+ 116          //      lcd_date=0xff;//初始化液晶端口全部置高电平
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 3   
+
+ 117          //      lcd_date=0x24;//4位模式，置lcden,lcdrw,lcdrs=100(4),准备写指令寄存器
+ 118          //      lcden=0;//完成控制命令的写入
+ 119          
+ 120          //      lcd_1602_write_com(0x28); //4位，2行，5x7点阵    
+ 121          //      delayms(15);                          
+ 122          //      lcd_1602_write_com(0x0c); //开显示
+ 123          //      delayms(15); 
+ 124          //      lcd_1602_write_com(0x06);  //写入新数据，光标右移
+ 125          //      delayms(15);     
+ 126          //      lcd_1602_write_com(0x01);//清屏
+ 127          //      delayms(15); 
+ 128          //      lcd_1602_write_com(0x02);//光标定位于右上角
+ 129          //      delayms(15);
+ 130          //}     
+ 131          
+ 132          ////显示字符
+ 133          //void lcd_string(uchar r,uchar c,char j,char *str)
+ 134          //{
+ 135          //      uchar i=0;
+ 136          //      code uchar ddram[]={0x80,0xc0};//液晶屏上下两行起始位置
+ 137          //       lcd_1602_write_com(ddram[r]|c);//设置显示起始位置
+ 138          //      //输出字符串
+ 139          //      for(i=0;i<j;i++)
+ 140          //              {
+ 141          //                      lcd_1602_write_dat(str[i]);
+ 142          //              }
+ 143          //}
+ 144          
+ 145          
+ 146          
+ 147          ////************************************************************//
+ 148          ///*DS1302DS1302有关子函数*/
+ 149          ////************************************************************//
+ 150          //void write_byte(uchar dat)//写一个字节
+ 151          //{
+ 152          //ACC=dat;
+ 153          //RST=1;
+ 154          //for(a=8;a>0;a--)
+ 155          //{
+ 156          //  IO=ACC0; 
+ 157          //  SCLK=1;
+ 158          //      SCLK=0;
+ 159          //  ACC=ACC>>1;
+ 160          //}
+ 161          //return;
+ 162          //}
+ 163          
+ 164          
+ 165          //uchar read_byte()//读一个字节函数
+ 166          //{
+ 167          //RST=1;
+ 168          //for(a=8;a>0;a--)
+ 169          //{
+ 170          //      ACC=ACC>>1;
+ 171          //  ACC7=IO;
+ 172          //  SCLK=1; 
+ 173          //  SCLK=0;
+ 174          //}
+ 175          //return (ACC);
+ 176          //}
+ 177          
+ 178          //void write_1302(uchar add,uchar dat)//向时钟芯片写入函数，指定地址，数据
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 4   
+
+ 179          //{
+ 180          //      RST=0;
+ 181          //      SCLK=0;
+ 182          //      RST=1;
+ 183          //      write_byte(add);
+ 184          //      write_byte(dat);
+ 185          //      SCLK=1;
+ 186          //      RST=0;
+ 187          //}
+ 188          
+ 189          
+ 190          //uchar read_1302(uchar add)//从芯片读出数据，指定地址
+ 191          //{
+ 192          //      uchar temp;
+ 193          //      RST=0;
+ 194          //      SCLK=0;
+ 195          //      RST=1;
+ 196          //      write_byte(add|0x01);
+ 197          //      temp=read_byte();
+ 198          //      SCLK=1;
+ 199          //      RST=0;
+ 200          //      IO=0;
+ 201          //      return(temp);
+ 202          //}
+ 203          
+ 204          //uchar BCD_Decimal(uchar bcd) //BCD码转十进制函数，输入BCD，返回十进制
+ 205          //{
+ 206          //uchar Decimal;
+ 207          //Decimal=bcd>>4;
+ 208          //return(Decimal=Decimal*10+(bcd&=0x0F));
+ 209          //}
+ 210          
+ 211          
+ 212          //void ds1302_init() 
+ 213          //{
+ 214          //  RST=0;
+ 215          //      SCLK=0;
+ 216          //      write_1302(0x8e,0x00); //允许写，禁止写保护  
+ 217          //      write_1302(0x80,0x00);//向DS1302内写秒寄存器80H写入初始秒数据00 
+ 218          //      write_1302(0x82,0x00);//向DS1302内写分寄存器82H写入初始分数据00
+ 219          //      write_1302(0x84,0x00);//向DS1302内写小时寄存器84H写入初始小时数据00
+ 220          //      write_1302(0x8a,0x02); //向DS1302内写周寄存器8aH写入初始周数据2
+ 221          //      write_1302(0x86,0x01);//向DS1302内写日期寄存器86H写入初始日期数据11
+ 222          //      write_1302(0x88,0x12); //向DS1302内写月份寄存器88H写入初始月份数据06
+ 223          //      write_1302(0x8c,0x15);//向DS1302内写年份寄存器8cH写入初始年份数据13
+ 224          //      write_1302(0x8e,0x80);  //打开写保护
+ 225          //      
+ 226          
+ 227          //}
+ 228          
+ 229          ////时分秒显示子函数
+ 230          //void write_sfm(uchar add,uchar dat)//向LCD写时分秒,有显示位置、显示数据，两个参数
+ 231          //{
+ 232          //      uchar gw,sw;
+ 233          //      gw=dat%10;//取得个位数字
+ 234          //      sw=dat/10;//取得十位数字
+ 235          //      lcd_1602_write_com(h2+add);//h2是头文件规定的值0x80+0x40
+ 236          //      lcd_1602_write_dat(0x30+sw); //数字+30得到十位的LCD1602显示码   
+ 237          //      lcd_1602_write_dat(0x30+gw); //数字+30得到个位的LCD1602显示码
+ 238          //}
+ 239          
+ 240          ////年月日显示子函数
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 5   
+
+ 241          //void write_nyr(uchar add,uchar dat)//向LCD写年月日，有显示位置、显示数据，两个参数
+ 242          //{
+ 243          //      uchar gw,sw;
+ 244          //      gw=dat%10;//取得个位数字
+ 245          //      sw=dat/10;//取得十位数字
+ 246          //      lcd_1602_write_com(h1+add);//设定显示位置为第一行第一个位置+add
+ 247          //      lcd_1602_write_dat(0x30+sw);//数字+30得到该数字的LCD1602显示码 
+ 248          //      lcd_1602_write_dat(0x30+gw); //数字+30得到该数字的LCD1602显示码
+ 249          //}
+ 250          
+ 251          ////写星期函数
+ 252          //void write_week(uchar week)
+ 253          //{
+ 254          //      lcd_1602_write_com(h1+0x0d);/*注意：第一行是从0位开始的*/
+ 255          //      switch(week)
+ 256          //      {
+ 257          //              case 1:lcd_1602_write_dat('1');
+ 258          //              break;
+ 259          //              case 2:lcd_1602_write_dat('2');
+ 260          //              break;
+ 261          //              case 3:lcd_1602_write_dat('3');
+ 262          //              break;
+ 263          //              case 4:lcd_1602_write_dat('4');
+ 264          //              break;
+ 265          //              case 5:lcd_1602_write_dat('5');
+ 266          //              break;
+ 267          //              case 6:lcd_1602_write_dat('6');
+ 268          //              break;
+ 269          //              case 7:lcd_1602_write_dat('7');
+ 270          //              break;
+ 271          //      }
+ 272          //}     
+ 273          
+ 274          
+ 275          ////*************************************************************//
+ 276          ///*温湿度传感器*/
+ 277          ////*************************************************************//
+ 278          ///*================================================================
+ 279          //【名 称】void I2CDelay (unsigned char t)
+ 280          //【功 能】模拟IIC用的短延时
+ 281          //================================================================*/
+ 282          //void I2CDelay (unsigned char t)
+ 283          //{
+ 284          //      while(t--);
+ 285          //}
+ 286          ///*================================================================
+ 287          //【名 称】void I2CInit(void)
+ 288          //【功 能】I2C初始化，空闲状态
+ 289          //================================================================*/
+ 290          //void I2CInit(void)
+ 291          //{
+ 292          //      SDA = 1; 
+ 293          //      I2CDelay(10);
+ 294          //      SCL = 1;
+ 295          //      I2CDelay(10);
+ 296          //}
+ 297          ///*================================================================
+ 298          //【名 称】void I2CStart(void)
+ 299          //【功 能】I2C启动信号
+ 300          //【备 注】SCL、SDA同为高，SDA跳变成低之后，SCL跳变成低
+ 301          //================================================================*/
+ 302          //void I2CStart(void)
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 6   
+
+ 303          //{
+ 304          //      SDA = 1;
+ 305          //      SCL = 1;
+ 306          //      I2CDelay(10);
+ 307          //      SDA = 0;
+ 308          //      I2CDelay(10);
+ 309          //      SCL = 0;
+ 310          //      I2CDelay(10);
+ 311          //}
+ 312          ///*================================================================
+ 313          //【名 称】void I2CStop(void)
+ 314          //【功 能】I2C停止信号
+ 315          //【备 注】SCL、SDA同为低，SCL跳变成高之后，SDA跳变成高
+ 316          //================================================================*/
+ 317          //void I2CStop(void)
+ 318          //{
+ 319          //              SDA = 0;
+ 320          //      SCL = 0;
+ 321          //              I2CDelay(10);
+ 322          //      SCL = 1;
+ 323          //      I2CDelay(10);
+ 324          //      SDA = 1;
+ 325          //      I2CDelay(10);
+ 326          //}
+ 327          ///*================================================================
+ 328          //【名 称】unsigned char I2CWRByte(unsigned char WriteData)
+ 329          //【功 能】I2C写一个字节数据，返回ACK或者NACK
+ 330          //【备 注】从高到低，依次发送
+ 331          //================================================================*/
+ 332          //uchar I2CWriteByte(uchar WriteData)
+ 333          //{
+ 334          //      uchar i;
+ 335          //      SCL = 0;
+ 336          //      for(i = 0;i < 8;i++)
+ 337          //      {
+ 338          //              if(WriteData & 0x80)
+ 339          //                      {
+ 340          //                      SDA = 1;        
+ 341          //                      }
+ 342          //              else
+ 343          //                      SDA = 0;
+ 344          //              I2CDelay(100);
+ 345          //              SCL = 1;            //输出SDA稳定后，拉高SCL给出上升沿，从机检测到后进行数据采样
+ 346          //              I2CDelay(500);
+ 347          //              SCL = 0;
+ 348          //              I2CDelay(100);
+ 349          //              WriteData <<= 1;
+ 350          //      } 
+ 351          //      I2CDelay(20);
+ 352          //      SDA = 1;
+ 353          //      SCL = 1;
+ 354          //      I2CDelay(30);
+ 355          //      if(SDA == 1)                    //SDA为高，收到NACK
+ 356          //      {
+ 357          //              return NACK;    
+ 358          //      }
+ 359          //      else                                //SDA为低，收到ACK
+ 360          //      {
+ 361          //              SCL = 0;
+ 362          //              I2CDelay(50);
+ 363          //              return ACK;
+ 364          //      }
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 7   
+
+ 365          //}
+ 366          ///*================================================================
+ 367          //【名 称】unsigned char I2CRDByte(unsigned char AckValue)
+ 368          //【功 能】I2C读一个字节数据，入口参数用于控制应答状态，ACK或者NACK
+ 369          //【备 注】从高到低，依次接收
+ 370          //================================================================*/
+ 371          //uchar I2CReadByte(uchar AckValue)
+ 372          //{
+ 373          //      uchar i,ReadData = 0;
+ 374          //      SCL = 0;
+ 375          //      SDA = 1;                        //释放总线      
+ 376          //      for(i = 0;i < 8;i++) 
+ 377          //      {
+ 378          //              SCL = 1;                //给出上升沿
+ 379          //              I2CDelay(30);   //延时等待信号稳定
+ 380          //              ReadData <<= 1; 
+ 381          //              if(SDA == 1)            //采样获取数据
+ 382          //              {
+ 383          //                      ReadData |= 0x01;
+ 384          //              }
+ 385          //              else
+ 386          //              {
+ 387          //                      ReadData &= 0xfe;
+ 388          //              }
+ 389          //              I2CDelay(10);
+ 390          //              SCL = 0;                //下降沿，从机给出下一位值
+ 391          //              I2CDelay(20);
+ 392          //      }   
+ 393          //      SDA = AckValue; //应答状态
+ 394          //      I2CDelay(10);
+ 395          //      SCL = 1;                         
+ 396          //      I2CDelay(50);          
+ 397          //      SCL = 0;
+ 398          //        I2CDelay(50);
+ 399          //      return ReadData;
+ 400          //}
+ 401          
+ 402          ///*================================================================
+ 403          //【名 称】void Delay(unsigned int t)
+ 404          //【功 能】延时长
+ 405          //================================================================*/
+ 406          //void HTUDelay(uint t)
+ 407          //{
+ 408          //      uchar i;
+ 409          //      while(t--)
+ 410          //      {
+ 411          //              for(i = 0;i < 200;i++);
+ 412          //      }                                          
+ 413          //}
+ 414          
+ 415          ///*================================================================
+ 416          //【名 称】void SHT21Init(void)
+ 417          //【功 能】SHT21初始化函数
+ 418          //================================================================*/
+ 419          //void HTU21DInit(void)
+ 420          //{
+ 421          //      I2CInit();              //I2C初始化
+ 422          //      I2CStart();             //启动I2C
+ 423          //      I2CWriteByte(HTU21DADDR&0xfe);          //写SHT21的I2C地址
+ 424          //      I2CWriteByte(0xfe);
+ 425          //      I2CStop();              //停止I2C
+ 426          //      HTUDelay(600);          //短延时
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 8   
+
+ 427          //}
+ 428          
+ 429          
+ 430          ///*================================================================
+ 431          //【名 称】long Sht21Work(unsigned char order)
+ 432          //【功 能】Sht21测量温湿度
+ 433          //================================================================*/
+ 434          //int HTU21DWork(uchar order)
+ 435          //{
+ 436          //      float temp = 0,TH = 0;
+ 437          //      uchar MSB,LSB;
+ 438          //      uint shidu,wendu;
+ 439          //      
+ 440          //      I2CStart();
+ 441          //      if(I2CWriteByte(HTU21DADDR & 0xfe) == ACK)
+ 442          //      {
+ 443          //              if(I2CWriteByte(order) == ACK)
+ 444          //              {
+ 445          //                      do
+ 446          //                      {
+ 447          //                              HTUDelay(30);
+ 448          //                              I2CStart();     
+ 449          //                      }
+ 450          //                      while(I2CWriteByte(HTU21DADDR | 0x01) == NACK);
+ 451          //                      MSB = I2CReadByte(ACK);
+ 452          //                      HTUDelay(30);
+ 453          //                      LSB = I2CReadByte(ACK);
+ 454          //                      I2CReadByte(NACK);
+ 455          //                      I2CStop();
+ 456          //                      LSB &= 0xfc;
+ 457          //                      temp = MSB*256+LSB;
+ 458          //                              if (order == 0xf3)//触发开启温度检测
+ 459          //                      {
+ 460          //                              TH=(175.72)*temp/65536-46.85;//温度:T= -46.85 + 175.72 * ST/2^16
+ 461          //                              wendu =(uint)(fabs(TH)*100);
+ 462          //                              if(TH >= 0)
+ 463          //                                      flag = 0;
+ 464          //                              else
+ 465          //                                      flag = 1;
+ 466          //                              return wendu;   
+ 467          //                      }
+ 468          //                      else
+ 469          //                      {
+ 470          //                              TH = (temp*125)/65536-6;
+ 471          //                              shidu = (uint)(fabs(TH)*100);//湿度: RH%= -6 + 125 * SRH/2^16
+ 472          //                              return shidu;
+ 473          //                      }
+ 474          //              }
+ 475          //      }
+ 476          //      return 0;
+ 477          //}
+ 478          
+ 479          ///*********  定义显示函数 ******/
+ 480          //void LCD_Display(     uint TEMP,      uint HUMI)
+ 481          //{
+ 482          //                                      uchar wendu1[7],shidu[8];
+ 483          //                                      wendu1[0]=TEMP/10000+'0';     //百位            
+ 484          //                      wendu1[1]=(TEMP%10000)/1000+'0';  //十位                
+ 485          //                                      wendu1[2]=(TEMP%1000)/100+'0';          //个位
+ 486          //                      wendu1[3]=0x2E;                                         //小数点
+ 487          //                                      wendu1[4]=(TEMP%100)/10+'0';//小数后一位
+ 488          //                                      wendu1[5]='%';
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 9   
+
+ 489          //                                      wendu1[6]='C';  
+ 490          //                                      lcd_string(0,5,7,wendu1);//显示温度
+ 491          //      
+ 492          //                                      shidu[0]=HUMI/10000+'0';                
+ 493          //                      shidu[1]=(HUMI%10000)/1000+'0';         
+ 494          //                                      shidu[2]=(HUMI%1000)/100+'0';                   
+ 495          //                      shidu[3]=0x2E;                                          
+ 496          //                                      shidu[4]=(HUMI%100)/10+'0';     
+ 497          //                                      shidu[5]='%';
+ 498          //                                      shidu[6]='R';
+ 499          //                                      shidu[7]='H';           
+ 500          //                                      lcd_string(1,5,8,shidu);
+ 501          //                              
+ 502          //}
+ 503          
+ 504          
+ 505          //void init() //定时器、计数器设置函数
+ 506          //{
+ 507          //      TMOD=0x01; //指定定时/计数器T0,T1的工作方式为1
+ 508          //      TH0=(65536-50000)/256; //对T0定时器装值
+ 509          //  TL0=(65536-50000)%256;
+ 510          //      ET0=1;//允许T0中断
+ 511          //      TR0=1;//开启中断，启动定时器
+ 512          //      EA=1;  //允许总中断
+ 513          //}
+ 514          
+ 515          
+ 516          
+ 517          ////**************************************************************//
+ 518          ///*按键*/
+ 519          ////**************************************************************//
+ 520          //void keyscan()
+ 521          //{
+ 522          //      /**屏显切换**/          
+ 523          //              if(key4==0)//设置键按下
+ 524          //      {
+ 525          //              delay(5);//延时
+ 526          //              if(key4==0)
+ 527          //              {
+ 528          //                      while(!key4);
+ 529          //                      init(); //调用定时计数器的设置子函数
+ 530          //                      ds1302_init(); //调用DS1302时钟的初始化子函数
+ 531          //                              
+ 532          //                      delay(10);
+ 533          //              }
+ 534          //      }
+ 535          //      if(key5==0)//设置键按下
+ 536          //      {
+ 537          //                uint tem=0,htu=0;
+ 538          //              delay(5);//延时
+ 539          //              if(key5==0)
+ 540          //              {
+ 541          //                      while(!key5);
+ 542          //                              TR0=0;
+ 543          //                              lcd_1602_write_com(0x01);//清屏
+ 544          //                              delayms(15);
+ 545          //                      lcd_string(0,0,5,"TEMP:");
+ 546          //                      lcd_string(1,0,5,"HUMI:");
+ 547          //                      
+ 548          //      while(key4!=0)
+ 549          //       {
+ 550          //              tem=HTU21DWork(0xf3);//触发开启温度检测
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 10  
+
+ 551          //              htu=HTU21DWork(0xf5);//触发开启湿度检测
+ 552          //              LCD_Display(tem,htu);//显示温湿度
+ 553          //              delayms(5000);//刷新慢一些
+ 554          //              }
+ 555          //              }
+ 556          //      }
+ 557          //      
+ 558          //      if(key1==0)//设置键按下
+ 559          //      {
+ 560          //              delay(5);//延时
+ 561          //              if(key1==0)
+ 562          //              {
+ 563          //                      beep=0;//蜂鸣器短响一声
+ 564          //                      delay(200);
+ 565          //                      beep=1;
+ 566          //                      alarmflag=0;/*按下标志，用于防止调节时间时鸣叫*/
+ 567          //                      while(!key1);
+ 568          //                      keynum++;
+ 569          //                      if(keynum==9)
+ 570          //                      keynum=1;
+ 571          //                      switch(keynum)
+ 572          //                      {
+ 573          //                      case 1:TR0=0;//关闭定时器
+ 574          //                                 lcd_1602_write_com(h2+0x07);//秒的位置
+ 575          //                                       lcd_1602_write_com(0x0f);//设置为光标闪烁
+ 576          //                                 temp=(miao)/10*16+(miao)%10;//秒化为bcd码
+ 577          //                                 write_1302(0x8e,0x00);
+ 578          //                                 write_1302(0x80,0x80|temp);//秒数据写入
+ 579          //                                 write_1302(0x8e,0x80);
+ 580          //                                 break;
+ 581          //                      case 2:lcd_1602_write_com(h2+4);//分的位置
+ 582          //                                 break;
+ 583          //                      case 3:lcd_1602_write_com(h2+1);//时的位置
+ 584          //                                 break;
+ 585          //                      case 4:lcd_1602_write_com(h1+0x0d);//星期的位置
+ 586          //                                 break;
+ 587          //                      case 5:lcd_1602_write_com(h1+0x09);//日的位置
+ 588          //                                 break;
+ 589          //                      case 6:lcd_1602_write_com(h1+0x06);//月的位置
+ 590          //                                break;
+ 591          //                      case 7:lcd_1602_write_com(h1+0x3);//年的位置
+ 592          //                                break;
+ 593          //                      case 8:lcd_1602_write_com(0x0c);//第8次，光标不闪烁
+ 594          //                                
+ 595          //                                TR0=1;//重新打开定时器
+ 596          //                                temp=(miao)/10*16+(miao)%10;
+ 597          //                                write_1302(0x8e,0x00);
+ 598          //                                write_1302(0x80,0x00|temp);//写入秒
+ 599          //                                write_1302(0x8e,0x80);
+ 600          //                                break;
+ 601          //                      }
+ 602          //              }
+ 603          //      }
+ 604          //      if(keynum!=0)//当设置键按下时才能操作
+ 605          //      {
+ 606          //              if(key2==0)//加键
+ 607          //              {
+ 608          //                      delay(5);
+ 609          //                      if(key2==0)
+ 610          //                      {
+ 611          //                              beep=0;//蜂鸣器短响一声
+ 612          //                              delay(200);
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 11  
+
+ 613          //                              beep=1;
+ 614          //                              while(!key2);//按键松开
+ 615          //                              switch(keynum)
+ 616          //                              {
+ 617          //                                      case 1:miao++;//
+ 618          //                                                 if(miao==60) miao=0;
+ 619          //                                                 write_sfm(0x06,miao);/*在十位的位置写入，因为为两位数，个位数自动再后面显示*/
+ 620          //                                                 temp=(miao)/10*16+(miao)%10;//转换为bcd码
+ 621          //                                                 write_1302(0x8e,0x00);//允许写
+ 622          //                                                 write_1302(0x80,temp);// 写入秒
+ 623          //                                                 write_1302(0x8e,0x80);//打开保护
+ 624          //                                                 lcd_1602_write_com(h2+0x07);//液晶模式为写入后自动右移，在此返回原来位置
+ 625          //                                                 break;
+ 626          //                                      case 2:fen++;
+ 627          //                                                 if(fen==60) fen=0;
+ 628          //                                                 write_sfm(0x03,fen);//在十位数位置开始写入
+ 629          //                                                 temp=(fen)/10*16+(fen)%10;//转换为bcd码
+ 630          //                                                 write_1302(0x8e,0x00);//允许写
+ 631          //                                                 write_1302(0x82,temp);//写入分
+ 632          //                                                 write_1302(0x8e,0x80);//打开保护
+ 633          //                                                lcd_1602_write_com(h2+4);//返回个位数的位置
+ 634          //                                                 break;
+ 635          //                                      case 3:shi++;
+ 636          //                                                 if(shi==24) shi=0;
+ 637          //                                                write_sfm(0,shi);//在0位开始写入
+ 638          //                                                 temp=(shi)/10*16+(shi)%10;//转换为bcd码
+ 639          //                                                 write_1302(0x8e,0x00);//允许写
+ 640          //                                                 write_1302(0x84,temp);//写入时
+ 641          //                                                 write_1302(0x8e,0x80);//打开保护
+ 642          //                                                 lcd_1602_write_com(h2+1);//返回到个位位置
+ 643          //                                                 break;
+ 644          //                                      case 4:week++;
+ 645          //                                                 if(week==8) week=1;
+ 646          //                                               lcd_1602_write_com(h1+0x0d);//显示位置
+ 647          //                                                 write_week(week);//写入星期
+ 648          //                                                 temp=(week)/10*16+(week)%10;
+ 649          //                                                 write_1302(0x8e,0x00);//允许写入
+ 650          //                                                 write_1302(0x8a,temp);//写入周
+ 651          //                                                 write_1302(0x8e,0x80);//打开保护
+ 652          //                                                lcd_1602_write_com(h1+0x0e);
+ 653          //                                                 break;
+ 654          //                                      case 5:ri++;
+ 655          //                                                 if(ri==32) ri=1;
+ 656          //                                                 write_nyr(8,ri);//注意是在十位开始写入
+ 657          //                                                 temp=(ri)/10*16+(ri)%10;//转换为bcd码
+ 658          //                                                 write_1302(0x8e,0x00);//允许写
+ 659          //                                                 write_1302(0x86,temp);//写入日
+ 660          //                                                 write_1302(0x8e,0x80);//打开保护
+ 661          //                                                 lcd_1602_write_com(h1+9);//返回个位数
+ 662          //                                                 break;
+ 663          //                                      case 6:yue++;
+ 664          //                                                 if(yue==13) yue=1;
+ 665          //                                                 write_nyr(5,yue);//在十位开始写入
+ 666          //                                                 temp=(yue)/10*16+(yue)%10;//转换为bcd码
+ 667          //                                                 write_1302(0x8e,0x00);//允许写
+ 668          //                                                 write_1302(0x88,temp);//写入月
+ 669          //                                                 write_1302(0x8e,0x80);//打开保护
+ 670          //                                                lcd_1602_write_com(h1+6);//返回个位位置 
+ 671          //                                                 break;
+ 672          //                                      case 7:nian++;
+ 673          //                                                 if(nian==100) nian=0;
+ 674          //                                                 write_nyr(2,nian);//在第一行第三个字符开始写入
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 12  
+
+ 675          //                                                 temp=(nian)/10*16+(nian)%10;//转换为bcd码
+ 676          //                                                 write_1302(0x8e,0x00);//允许写
+ 677          //                                                 write_1302(0x8c,temp);//写入年
+ 678          //                                                 write_1302(0x8e,0x80);//打开保护
+ 679          //                                                lcd_1602_write_com(h1+3);//返回个位位置
+ 680          //                                                 break;
+ 681          //                              }                  
+ 682          
+ 683          //                      }
+ 684          //              }
+ 685          //              //以下是减的函数
+ 686          //              if(key3==0)
+ 687          //              {
+ 688          //                      delay(5);//消抖
+ 689          //                      if(key3==0)
+ 690          //                      {
+ 691          //                              beep=0;//蜂鸣器短响一声
+ 692          //                              delay(200);
+ 693          //                              beep=1;
+ 694          //                              while(!key3);
+ 695          //                              switch(keynum)
+ 696          //                              {
+ 697          //                                      case 1:miao--;
+ 698          //                                                 if(miao==-1) miao=59;//减到-1返回59
+ 699          //                                                write_sfm(0x06,miao);//在十位数写入 
+ 700          //                                                 temp=(miao)/10*16+(miao)%10;//转换为bcd码
+ 701          //                                                 write_1302(0x8e,0x00);//允许写
+ 702          //                                                 write_1302(0x80,temp);//写入秒
+ 703          //                                                 write_1302(0x8e,0x80);//打开保护
+ 704          //                                               lcd_1602_write_com(h2+0x07);//返回个位位置
+ 705          //                                                 break;
+ 706          //                                      case 2:fen--;
+ 707          //                                                 if(fen==-1) fen=59;
+ 708          //                                                 write_sfm(0x03,fen);//在十位数位置写入
+ 709          //                                                 temp=(fen)/10*16+(fen)%10;//转换为bcd码
+ 710          //                                                 write_1302(0x8e,0x00);//允许写入
+ 711          //                                                 write_1302(0x82,temp);//写入分
+ 712          //                                                 write_1302(0x8e,0x80);//打开保护
+ 713          //                                                lcd_1602_write_com(h2+4);//返回个位数位置
+ 714          //                                                 break;
+ 715          //                                  case 3:shi--;
+ 716          //                                                 if(shi==-1) shi=23;
+ 717          //                                                write_sfm(0,shi);//在0位开始写入
+ 718          //                                                 temp=(shi)/10*16+(shi)%10;//转换为bcd码
+ 719          //                                                 write_1302(0x8e,0x00);//允许写入
+ 720          //                                                 write_1302(0x84,temp);//写入时
+ 721          //                                                 write_1302(0x8e,0x80);//打开保护
+ 722          //                                                 lcd_1602_write_com(h2+1);//返回到个位位置
+ 723          //                                                 break;
+ 724          //                                      case 4:week--;
+ 725          //                                                 if(week==0) week=7;
+ 726          //                                                 lcd_1602_write_com(h1+0x0d);//显示位置
+ 727          //                                                 write_week(week);//写入星期
+ 728          //                                                 temp=(week)/10*16+(week)%10;//转换为bcd码
+ 729          //                                                 write_1302(0x8e,0x00);//允许写入
+ 730          //                                                 write_1302(0x8a,temp);//写入周
+ 731          //                                                 write_1302(0x8e,0x80);//打开保护
+ 732          //                                                lcd_1602_write_com(h1+0x0e);//返回原来位置
+ 733          //                                                 break;
+ 734          //                                      case 5:ri--;
+ 735          //                                                 if(ri==0) ri=31;
+ 736          //                                                 write_nyr(8,ri);//在十位开始显示
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 13  
+
+ 737          //                                                 temp=(ri)/10*16+(ri)%10;//转换为bcd码
+ 738          //                                                 write_1302(0x8e,0x00);//允许写入
+ 739          //                                                 write_1302(0x86,temp);//写入日
+ 740          //                                                 write_1302(0x8e,0x80);//打开保护
+ 741          //                                                 lcd_1602_write_com(h1+9);//返回个位数
+ 742          //                                                 break;
+ 743          //                                      case 6:yue--;
+ 744          //                                                 if(yue==0) yue=12;
+ 745          //                                                 write_nyr(5,yue);//在十位数位置开始写入
+ 746          //                                                 temp=(yue)/10*16+(yue)%10;//转换为bcd码
+ 747          //                                                 write_1302(0x8e,0x00);//允许写入
+ 748          //                                                 write_1302(0x88,temp);//写入月
+ 749          //                                                 write_1302(0x8e,0x80);//打开保护
+ 750          //                                                 lcd_1602_write_com(h1+6);//返回到个位位置
+ 751          //                                                 break;
+ 752          //                                      case 7:nian--;
+ 753          //                                                 if(nian==-1) nian=99;
+ 754          //                                                 write_nyr(2,nian);//第一行第三个字符开始写入
+ 755          //                                                 temp=(nian)/10*16+(nian)%10;//转换为bcd码
+ 756          //                                                 write_1302(0x8e,0x00);//允许写入
+ 757          //                                                 write_1302(0x8c,temp);//写入年
+ 758          //                                                 write_1302(0x8e,0x80);//打开保护
+ 759          //                                                 lcd_1602_write_com(h1+3);//返回在年的尾数位置
+ 760          //                                                 break;
+ 761          //                                                      
+ 762          //                              }
+ 763          //                      }
+ 764          //              }
+ 765          //              
+ 766          //      }
+ 767          
+ 768          //}
+ 769          
+ 770          ///*********************************************************************************************
+ 771          //函数名：PWM初始化函数
+ 772          //调  用：PWM_init();
+ 773          //参  数：无
+ 774          //返回值：无
+ 775          //结  果：将PCA初始化为PWM模式，初始占空比为0
+ 776          //备  注：需要更多路PWM输出直接插入CCAPnH和CCAPnL即可
+ 777          ///**********************************************************************************************/
+ 778          //void PWM_init (void)
+ 779          //{
+ 780          //      CMOD=0x02; //设置PCA定时器
+ 781          //      CL=0x00; 
+ 782          //      CH=0x00;
+ 783          //      CCAPM0=0x42; //PWM0设置PCA工作方式为PWM方式（0100 0010）
+ 784          //      CCAP0L=0x00; //设置PWM0初始值与CCAP0H相同
+ 785          //      CCAP0H=0x00; // PWM0初始时为0
+ 786          
+ 787          // //CCAPM1=0x42; //PWM1设置PCA工作方式为PWM方式（使用时删除//）
+ 788          // //CCAP1L=0x00; //设置PWM1初始值与CCAP0H相同
+ 789          //  //CCAP1H=0x00; // PWM1初始时为0
+ 790          
+ 791          // //CCAPM2=0x42; //PWM2设置PCA工作方式为PWM方式
+ 792          // //CCAP2L=0x00; //设置PWM2初始值与CCAP0H相同
+ 793          //  //CCAP2H=0x00; // PWM2初始时为0
+ 794          
+ 795          // //CCAPM3=0x42; //PWM3设置PCA工作方式为PWM方式
+ 796          // //CCAP3L=0x00; //设置PWM3初始值与CCAP0H相同
+ 797          //  //CCAP3H=0x00; // PWM3初始时为0
+ 798          
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 14  
+
+ 799          //      CR=1; //启动PCA定时器
+ 800          //}
+ 801          ///**********************************************************************************************/
+ 802          
+ 803          ///*********************************************************************************************
+ 804          //函数名：PWM0占空比设置函数
+ 805          //调  用：PWM0_set();
+ 806          //参  数：0x00~0xFF（亦可用0~255）
+ 807          //返回值：无
+ 808          //结  果：设置PWM模式占空比，为0时全部高电平，为1时全部低电平
+ 809          //备  注：如果需要PWM1的设置函数，只要把CCAP0L和CCAP0H中的0改为1即可
+ 810          ///**********************************************************************************************/
+ 811          //void PWM0_set (unsigned char a){
+ 812          //      CCAP0L= a; //设置值直接写入CCAP0L
+ 813          //      CCAP0H= a; //设置值直接写入CCAP0H
+ 814          //}
+ 815          
+ 816          
+ 817          //void beep_time()
+ 818          //{
+ 819          //      uchar i;
+ 820          //              if(shi==2 && fen==0 && miao==5)
+ 821          //              {
+ 822          //                              beep=0; 
+ 823          //              }
+ 824          //if(shi==2 && fen==0 && miao==10)
+ 825          //              {
+ 826          //                      beep=1;
+ 827          //              }
+ 828          //      
+ 829          //}
+ 830          ////*******************主函数**************************                 
+ 831          //void main()
+ 832          //{
+ 833          //              int i=0;   
+ 834          //              Lcd_1602_init(); //调用液晶屏初始化子函数
+ 835          //              HTU21DInit();
+ 836          //              lcd_string(0,0,5,"hello");
+ 837          //              lcd_string(1,0,6,"123456");
+ 838          //              while(1)
+ 839          //              {
+ 840          //              
+ 841          //              keyscan(); //调用键盘扫描子函数
+ 842          //      
+ 843          //                      if(key8!=0)
+ 844          //                      {
+ 845          //              PWM_init(); //PWM初始化
+ 846          //              for(i=0;i<0xFF;i++)
+ 847          //              {
+ 848          //              PWM0_set(i); //设置PWM占空比,总共255,除以2,转换成十六进制得7F
+ 849          //              }
+ 850          //              i=0;
+ 851          //                      }
+ 852          //                                      beep_time();
+ 853          //              }
+ 854          //}
+ 855          //void timer0() interrupt 1 using 0//取得并显示日历和时间
+ 856          //{
+ 857          //      TH0=(65536-50000)/256; //对T0定时器重装初值
+ 858          //      TL0=(65536-50000)%256;
+ 859          //      //读取秒时分周日月年七个数据
+ 860          //      miao = BCD_Decimal(read_1302(0x81));
+C51 COMPILER V9.60.0.0   DS1302                                                            05/18/2020 23:29:05 PAGE 15  
+
+ 861          //      fen = BCD_Decimal(read_1302(0x83));
+ 862          //      shi  = BCD_Decimal(read_1302(0x85));
+ 863          //      ri  = BCD_Decimal(read_1302(0x87));
+ 864          //      yue = BCD_Decimal(read_1302(0x89));
+ 865          //      nian=BCD_Decimal(read_1302(0x8d));
+ 866          //      week=BCD_Decimal(read_1302(0x8b));
+ 867          //      lcd_string(0,0,15,"20  /  /   W< >");
+ 868          //      write_nyr(8,ri);//日期，从第二行第8个字符后开始显示
+ 869          //      write_nyr(5,yue);//月份，从第二行第5个字符后开始显示
+ 870          //      write_nyr(2,nian);//年，从第二行第2个字符后开始显示
+ 871          //      write_week(week);
+ 872          //      lcd_string(1,0,16,"  :  :          ");
+ 873          //      write_sfm(6,miao);//秒，从第二行第6个字后开始显示（调用时分秒显示子函数）
+ 874          //      write_sfm(3,fen);//分，从第二行第3个字符后开始显示
+ 875          //      write_sfm(0,shi);//小时，从第二行第1个字符后开始显示
+ 876          //      
+ 877          //}
+ 878          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   ----    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

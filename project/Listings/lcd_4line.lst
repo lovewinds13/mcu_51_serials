@@ -1,0 +1,165 @@
+C51 COMPILER V9.60.0.0   LCD_4LINE                                                         05/18/2020 23:30:46 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE LCD_4LINE
+OBJECT MODULE PLACED IN .\Objects\lcd_4line.obj
+COMPILER INVOKED BY: D:\keil_c51\C51\BIN\C51.EXE ..\driver\src\lcd_4line.c OPTIMIZE(8,SPEED) BROWSE INCDIR(..\app\inc;..
+                    -\driver\inc;..\user\inc) DEBUG OBJECTEXTEND PRINT(.\Listings\lcd_4line.lst) OBJECT(.\Objects\lcd_4line.obj)
+
+line level    source
+
+   1          #ifndef __PRJ_STC51_LCD_4LINE_C__
+   2          #define __PRJ_STC51_LCD_4LINE_C__
+   3          
+   4          #include <reg52.h>
+   5          #include "typedef.h"
+   6          #include "lcd_4line.h"
+   7          #include <intrins.h>
+   8          
+   9          uint8_t table1[]={"date:  00/00/00  "};
+  10          
+  11          //--------------------------------------------------------------------------------------------------------
+             --------------------------------------
+  12          //      函 数 名: lcd_delay_ms
+  13          //      功能说明: LCD延时使用函数
+  14          //      形    参: 无
+  15          //      返 回 值: 无
+  16          //      日    期: 
+  17          //  备    注: 
+  18          //      作    者: 千艺千寻
+  19          //--------------------------------------------------------------------------------------------------------
+             --------------------------------------
+  20          static void lcd_delay_ms(uint8_t time)
+  21          {
+  22   1              uint8_t t;
+  23   1              
+  24   1              while(time--) 
+  25   1              {
+  26   2                      for (t = 0; t < 120; t++);
+  27   2              }
+  28   1      }
+  29          
+  30          //--------------------------------------------------------------------------------------------------------
+             --------------------------------------
+  31          //      函 数 名: lcd_delay_ms
+  32          //      功能说明: LCD延时使用函数
+  33          //      形    参: 无
+  34          //      返 回 值: 无
+  35          //      日    期: 
+  36          //  备    注: 
+  37          //      作    者: 千艺千寻
+  38          //--------------------------------------------------------------------------------------------------------
+             --------------------------------------
+  39          static void lcd_busy_wait(void)
+  40          {
+  41   1              uint8_t Hi,Lo;
+  42   1              do
+  43   1              {
+  44   2                      lcd_date |=0xf0;//4位模式下的数据端口置高电平
+  45   2                      
+  46   2                      lcdrs = 0;
+  47   2                      lcdrw = 1;      //选择指令寄存器 读
+  48   2                      lcden = 1;
+  49   2                      delay5us();
+  50   2                      
+C51 COMPILER V9.60.0.0   LCD_4LINE                                                         05/18/2020 23:30:46 PAGE 2   
+
+  51   2                      Hi = lcd_date;
+  52   2                      delay5us();
+  53   2                      lcden = 0;
+  54   2                      delay5us();
+  55   2                      lcden = 1;
+  56   2                      delay5us();
+  57   2                      Lo = lcd_date;
+  58   2                      delay5us();
+  59   2                      lcden = 0;
+  60   2                      delay5us();
+  61   2              }
+  62   1              while(Hi&0x80);
+  63   1      }
+  64          
+  65          //写指令
+  66          static void lcd_1602_write_com(uint8_t com)   
+  67          {
+  68   1              lcd_busy_wait();        //液晶忙等待
+  69   1              
+  70   1              lcd_date = com&0xf0|0x04;       //写入高四位,或时已经将rs,rw,en的电平置位
+  71   1              delay5us();
+  72   1              lcden = 0;
+  73   1              delay5us();
+  74   1              lcd_date = com<<4|0x04; //写入低四位
+  75   1              delay5us();
+  76   1              lcden = 0;
+  77   1              delay5us();
+  78   1      }       
+  79          
+  80          //写数据
+  81          static void lcd_1602_write_dat(uint8_t dat)
+  82          {
+  83   1              lcd_busy_wait();//液晶忙等待
+  84   1              
+  85   1              lcd_date = dat&0xf0|0x05;//写入高四位
+  86   1              delay5us();
+  87   1              lcden = 0;
+  88   1              delay5us();
+  89   1              lcd_date=dat<<4|0x05;//写入低四位
+  90   1              delay5us();
+  91   1              lcden = 0;
+  92   1              delay5us();
+  93   1      }       
+  94          
+  95          //初始化液晶
+  96          void lcd_1602_init(void)
+  97          {
+  98   1              lcd_date = 0xFF;//初始化液晶端口全部置高电平
+  99   1              lcd_date = 0x24;//4位模式，置lcden,lcdrw,lcdrs=100(4),准备写指令寄存器
+ 100   1              lcden = 0;//完成控制命令的写入
+ 101   1              
+ 102   1              lcd_1602_write_com(0x28); //4位，2行，5x7点阵      
+ 103   1              lcd_delay_ms(15);    
+ 104   1              
+ 105   1              lcd_1602_write_com(0x0C); //开显示
+ 106   1              lcd_delay_ms(15); 
+ 107   1              
+ 108   1              lcd_1602_write_com(0x06);  //写入新数据，光标右移
+ 109   1              lcd_delay_ms(15); 
+ 110   1              
+ 111   1              lcd_1602_write_com(0x01);//清屏
+ 112   1              lcd_delay_ms(15); 
+C51 COMPILER V9.60.0.0   LCD_4LINE                                                         05/18/2020 23:30:46 PAGE 3   
+
+ 113   1              
+ 114   1              lcd_1602_write_com(0x02);//光标定位于右上角
+ 115   1              lcd_delay_ms(15);
+ 116   1      }       
+ 117          
+ 118          //显示字符
+ 119          void lcd_show_string(uint8_t r, uint8_t c, char *str)
+ 120          {
+ 121   1              uint8_t i = 0;
+ 122   1              
+ 123   1              code uint8_t ddram[]={0x80, 0xC0};//液晶屏上下两行起始位置
+ 124   1              
+ 125   1               lcd_1602_write_com(ddram[r]|c);//设置显示起始位置
+ 126   1              //输出字符串
+ 127   1              for (i = 0; (i < 16) && (str[i]!= '\0'); i++)
+ 128   1              {
+ 129   2                      lcd_1602_write_dat(str[i]);
+ 130   2              }
+ 131   1      }
+ 132          
+ 133          #endif  //__PRJ_STC51_LCD_4LINE_C__
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    277    ----
+   CONSTANT SIZE    =      2    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     18       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

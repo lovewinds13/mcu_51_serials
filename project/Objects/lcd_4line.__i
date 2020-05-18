@@ -1,0 +1,1 @@
+"..\driver\src\lcd_4line.c" OPTIMIZE (8,SPEED) BROWSE INCDIR(..\app\inc;..\driver\inc;..\user\inc) DEBUG OBJECTEXTEND PRINT(.\Listings\lcd_4line.lst) OBJECT(.\Objects\lcd_4line.obj)

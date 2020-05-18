@@ -1,0 +1,6 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj",
+".\Objects\ds1302.obj",
+".\Objects\lcd_4line.obj" 
+TO ".\Objects\mcu_51_serials" 
+PRINT(".\Listings\mcu_51_serials.m51") RAMSIZE(256) 
